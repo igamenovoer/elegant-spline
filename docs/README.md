@@ -8,7 +8,7 @@ With Pixi installed, run this command from the Elegant Spline repository root.
 pixi install --locked
 ```
 
-Pixi provisions Python 3.13 from `pixi.lock` and installs `elegant_spline` in editable mode. Python imports the package from `src/elegant_spline/`, so local source edits take effect on the next run. [Project manifest](../pyproject.toml)
+Pixi installs Python 3.13, NumPy, and SciPy from `pixi.lock`, then installs `elegant_spline` in editable mode. Python imports the package from `src/elegant_spline/`, so local source edits take effect on the next run. [Project manifest](../pyproject.toml)
 
 ## Verify
 
@@ -18,4 +18,10 @@ Run the package checks in the locked environment.
 pixi run --locked test
 ```
 
-The current suite checks that Python can import `elegant_spline` and read the installed distribution metadata. [Package tests](../tests/integration/test_package.py) · [Test layout](../tests/README.md)
+The suite checks package installation, distance fitting, fixed-knot fairing, and their combined use. [Test layout](../tests/README.md)
+
+## Use the library
+
+- Fit a planar cubic to ordered points. [Distance fitting](distance-fitting.md)
+- Fair an existing vector spline. [Curvature smoothing](curvature-smoothing.md)
+- Fit and fair the same curve in one call. [Combined example](fit-and-fair.md)

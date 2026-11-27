@@ -9,11 +9,15 @@ Elegant Spline is a project for constructing and fitting spline curves that sati
 - **Smoothness.** Control continuity at joins and reduce bending where the curve has room to turn.
 - **Spatial containment.** Keep the entire curve inside a permitted region and maintain clearance from obstacles between waypoints.
 
-## Initial problem
+## Fitting and fairing
 
-Fit a planar cubic B-spline to an ordered route through a polygonal domain with holes. The curve should reach the start and goal, pass near intermediate waypoints, and keep the required clearance through each turn. Endpoint and clearance requirements define which curves are admissible. Fitting error and bending help choose among those curves.
+Fit ordered planar observations with a weighted RMS allowance and optional endpoint correction. [Planar distance fitting](docs/distance-fitting.md)
 
-The project is at the design stage.
+Fair an existing SciPy B-spline while preserving its basis and the boundary values selected by the caller. [Curvature smoothing](docs/curvature-smoothing.md) · [Combined example](docs/fit-and-fair.md)
+
+## Spatial-containment goal
+
+A future fitting capability will accept a polygonal domain with holes as a hard constraint. It will fit curves through prescribed endpoints and maintain required clearance throughout each turn.
 
 ## Local setup
 
