@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "elegant-spline"
+version = "0.1.0"
+description = "Construct spline curves that satisfy geometric and numerical conditions."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/igamenovoer/elegant-spline"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/elegant_spline"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
+
+[tool.pixi.dependencies]
+python = "3.13.*"
+
+[tool.pixi.pypi-dependencies]
+elegant-spline = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+test = "python -I -m unittest discover -s tests -v"

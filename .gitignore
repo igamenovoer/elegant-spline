@@ -1,0 +1,8 @@
+/.pixi/
+/.venv/
+/.env
+/build/
+/dist/
+__pycache__/
+*.py[cod]
+*.egg-info/
