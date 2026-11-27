@@ -1,0 +1,108 @@
+@import "@fontsource-variable/dm-sans/index.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+
+:root {
+  color-scheme: light;
+  font-family: "DM Sans Variable", Arial, sans-serif;
+  color: #202d28;
+  background: #f4f5f0;
+  --ink: #20312a;
+  --quiet: #56675d;
+  --green: #174e3f;
+  --border: #d5dcd3;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 300px; }
+button, select, input { font: inherit; color: inherit; }
+button, select, input[type=checkbox] { cursor: pointer; }
+button { background: transparent; border: 0; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #509684; outline-offset: 2px; }
+[hidden] { display: none !important; }
+.symbols { position: absolute; width: 0; height: 0; overflow: hidden; }
+.icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.appbar { background: #fcfdf9; border-bottom: 1px solid var(--border); }
+.bar-inner, main { width: min(1664px, 100%); margin: auto; padding-inline: clamp(16px, 3vw, 52px); }
+.bar-inner { height: 65px; display: flex; align-items: center; justify-content: space-between; }
+.brand, .file-actions, .primary, .doc-line, .doc-meta, .plot-tools, .panel-heading h2 { display: flex; align-items: center; }
+.brand { gap: 10px; }
+.brand strong { font-size: 19px; letter-spacing: -.85px; font-weight: 730; }
+.bar-divider { height: 18px; border-left: 1px solid #ccd5cb; margin-inline: 9px; transform: rotate(14deg); }
+.product { font-size: 13px; color: #546359; }
+.file-actions { gap: 12px; }
+.primary { color: white; background: var(--green); font-weight: 580; font-size: 13px; padding: 9px 15px; border-radius: 6px; gap: 8px; }
+.primary:hover { background: #256451; }
+.quiet { font-size: 12px; color: var(--green); text-decoration: underline; text-underline-offset: 3px; }
+.doc-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 29px 0 24px; }
+.doc-heading > div { min-width: 0; }
+.doc-line, .doc-meta { gap: 12px; flex-wrap: wrap; }
+h1 { margin: 0; font-size: clamp(26px, 2.6vw, 38px); line-height: 1.12; letter-spacing: -.055em; font-weight: 650; overflow-wrap: anywhere; }
+.status { display: inline-flex; align-items: center; gap: 5px; border-radius: 20px; padding: 3px 9px; font-size: 11px; font-weight: 600; background: #e1ede1; color: #285837; border: 1px solid #cddfcd; }
+.status::before { content: ""; width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
+.status[data-status=fallback], .status[data-status=unavailable] { background: #f8ecda; color: #7d5323; border-color: #e7d6ba; }
+.doc-meta { margin-top: 8px; font-family: var(--mono); font-size: 11px; color: var(--quiet); gap: 7px; }
+.doc-meta .icon { width: 14px; height: 14px; }
+#document-file { overflow-wrap: anywhere; }
+.doc-meta i { height: 11px; border-left: 1px solid #b8c4b7; margin-inline: 3px; }
+.stage { display: grid; grid-template-columns: auto auto; align-items: center; gap: 10px; font-size: 12px; color: var(--quiet); flex: none; }
+select, .index-input { border: 1px solid #ccd4ca; border-radius: 5px; background-color: #fff; }
+select { padding: 7px 27px 7px 10px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2354675d' stroke-width='1.5'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 7px center; background-size: 15px; font-size: 12px; color: var(--ink); }
+select:disabled { opacity: .7; cursor: default; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(255px, 297px); gap: 18px; align-items: start; padding-bottom: 28px; }
+.panel { background: #fff; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+.panel-heading { padding: 15px 17px; min-height: 48px; border-bottom: 1px solid #e0e5dc; }
+.panel-heading h2 { font-size: 14px; letter-spacing: -.025em; font-weight: 700; gap: 9px; margin: 0; }
+.panel-heading h2 .icon { width: 16px; height: 16px; color: #50695d; }
+.plot-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-block: 9px; }
+.plot-tools { gap: 2px; color: #4a5e51; }
+.plot-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 26px; min-height: 28px; padding: 2px 4px; border-radius: 4px; font-size: 18px; }
+.plot-tools button:hover { background: #eff3ed; }
+.plot-tools #frame { font-family: inherit; font-size: 12px; padding-inline: 6px; }
+.plot-tools .icon { width: 15px; height: 15px; }
+.plot-tools output { font: 11px var(--mono); text-align: center; min-width: 40px; }
+.plot-tools > span { border-left: 1px solid var(--border); height: 15px; margin-inline: 5px; }
+.plot-area { height: clamp(440px, 57vh, 750px); background: #fafbf7; }
+#plot { width: 100%; height: 100%; display: block; touch-action: none; }
+.metrics { margin: 0; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border-top: 1px solid var(--border); padding: 15px 0; }
+.metrics div { padding-inline: clamp(8px, 1.7vw, 26px); border-left: 1px solid #e1e6dd; }
+.metrics div:first-child { border-left: 0; }
+.metrics dt { color: var(--quiet); font-size: 11px; }
+.metrics dd { font: 22px/1.5 var(--mono); letter-spacing: -.06em; margin: 0; }
+aside { display: grid; gap: 14px; }
+#layer-list { padding-inline: 15px; }
+.layer-block { padding: 8px 0; border-bottom: 1px solid #e6eae3; }
+.layer-block:last-child { border: none; }
+.layer-main, .layer-detail { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+.layer-main { padding: 3px 0; min-height: 27px; font-size: 13px; font-weight: 580; }
+.layer-main .layer-key { width: 25px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linejoin: round; }
+.layer-main .label-text { flex: 1; }
+.layer-detail { min-height: 25px; padding-left: 34px; color: #57675e; font-size: 12px; justify-content: space-between; }
+input[type=checkbox] { accent-color: var(--green); width: 15px; height: 15px; margin: 0; }
+.layer-detail input { width: 13px; height: 13px; }
+label:has(input:disabled) { opacity: .5; cursor: default; }
+.inspect-body { padding: 14px 16px 16px; }
+.pick-controls { display: grid; grid-template-columns: minmax(100px,1.4fr) minmax(80px,1fr); gap: 8px; }
+.index-input { display: flex; align-items: center; padding-right: 6px; color: var(--quiet); }
+.index-input input { font: 12px var(--mono); border: 0; background: transparent; padding: 6px 3px 6px 8px; width: 100%; min-width: 0; }
+#index-limit { font: 10px var(--mono); white-space: nowrap; }
+.coordinates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 13px 0 9px; }
+.coordinates div { min-width: 0; font: 12px var(--mono); border-radius: 4px; background: #f3f5f0; padding: 8px; display: flex; align-items: baseline; gap: 7px; overflow-wrap: anywhere; }
+.coordinates span { color: #6b796e; font-size: 10px; }
+#pick-detail { color: var(--quiet); font: 11px/1.6 var(--mono); overflow-wrap: anywhere; }
+#error, #reason { margin: -8px 0 12px; color: #81501a; background: #f9efdf; padding: 8px 12px; border-radius: 5px; font-size: 13px; overflow-wrap: anywhere; }
+@media(min-width:1600px) { .workspace { grid-template-columns: minmax(0,1fr) 330px; } }
+@media(max-width:890px) { .workspace { gap: 12px; grid-template-columns: minmax(0,1fr) 243px; } .panel-heading { padding-inline: 12px; } .plot-area { height: 460px; } }
+@media(max-width:720px) {
+  .workspace { grid-template-columns: 1fr; }
+  aside { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; }
+  .plot-area { height: clamp(320px, 56vw, 440px); }
+  .doc-heading { padding-block: 19px; } .stage { grid-template-columns: 1fr; gap: 3px; }
+  .metrics { padding-block: 9px; } .metrics dt { font-size: 10px; } .metrics dd { font-size: 18px; }
+}
+@media(max-width:480px) {
+  .bar-inner { height: 57px; } .bar-divider, .product { display: none; } .brand strong { font-size: 17px; }
+  .file-actions { gap: 5px; } .primary { padding: 8px 10px; } .quiet { font-size: 10px; }
+  aside { grid-template-columns: 1fr; }
+  .doc-line { gap: 7px; } .doc-meta { font-size: 10px; } .doc-heading { gap: 7px; }
+  .plot-heading { padding-inline: 10px; } .plot-tools { gap: 0; }
+}

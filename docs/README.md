@@ -27,3 +27,4 @@ The suite checks package installation, the three planar fitters, geometric curva
 - Fit a planar cubic with a spacing-derived knot basis. [Fixed-knot spacing](planar-fitting.md#fixed-knot-spacing)
 - Fair an existing vector spline. [Curvature smoothing](curvature-smoothing.md)
 - Fit and fair the same curve in one call. [Combined example](fit-and-fair.md)
+- Explore a recorded fit in the browser, including its permitted domain, merged points and Bézier handles. [Fit viewer](fit-viewer.md)

@@ -32,6 +32,7 @@ The setup guide covers the locked Pixi install and package checks. [Getting star
 | `src/elegant_spline/` | Python package for spline construction, fitting, and validation. |
 | `tests/` | Package and feature verification. [Test suites](tests/README.md) |
 | `scripts/` | Functional commands and runnable experiments. |
+| `web/spline-viewer/` | Interactive browser viewer for planar fits. [Open the viewer](docs/fit-viewer.md) |
 | `docs/` | Usage, APIs, formats, and requirements. |
 | `configs/` | Functional configuration. |
 | `models/` and `datasets/` | Acquisition instructions and manifests for model and dataset resources. |

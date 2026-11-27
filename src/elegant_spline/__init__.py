@@ -19,6 +19,7 @@ from .distance_fitting import (
     PlanarFitOptions,
     SmoothingSplineFitter,
 )
+from .viewer import ViewerDomain, export_viewer_document
 
 __all__ = [
     "BSplineCurvatureSmoother",
@@ -36,4 +37,6 @@ __all__ = [
     "PlanarFitOptions",
     "SmoothingReport",
     "SmoothingSplineFitter",
+    "ViewerDomain",
+    "export_viewer_document",
 ]

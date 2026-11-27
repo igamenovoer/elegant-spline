@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#164b40">
+  <title>Spline viewer · Elegant Spline</title>
+  <link rel="icon" href="./mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./src/app.ts"></script>
+</head>
+<body>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <symbol id="folder" viewBox="0 0 24 24"><path d="M3 17V6a1 1 0 0 1 1-1h6l2 3h8a1 1 0 0 1 1 1v2M3 18l3-7h16l-3 8H4Z"/></symbol>
+      <symbol id="frame-icon" viewBox="0 0 24 24"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></symbol>
+      <symbol id="axes" viewBox="0 0 24 24"><path d="M5 3v16h16M3 5l2-2 2 2m12 12 2 2-2 2M5 15c7 0 4-8 12-8"/></symbol>
+      <symbol id="layers" viewBox="0 0 24 24"><path d="m3 8 9-5 9 5-9 5Zm0 5 9 5 9-5m-18 5 9 5 9-5"/></symbol>
+      <symbol id="point" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></symbol>
+      <symbol id="file" viewBox="0 0 24 24"><path d="M5 3h9l5 5v13H5Zm9 0v6h5M8 13h7m-7 4h5"/></symbol>
+      <symbol id="chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+      <symbol id="domain-key" viewBox="0 0 24 24"><path d="M4 18V8l6-4 10 3v12Z" fill="#e1ebe6" stroke="#54746a"/></symbol>
+      <symbol id="data-key" viewBox="0 0 24 24"><path d="m3 16 8-9 9 7" stroke-dasharray="2 2"/><g fill="currentColor"><circle cx="3" cy="16" r="1.6"/><circle cx="11" cy="7" r="1.6"/><circle cx="20" cy="14" r="1.6"/></g></symbol>
+      <symbol id="prep-key" viewBox="0 0 24 24"><path d="m8 10 4-5 4 5-4 5Z"/><circle cx="6" cy="16" r="2"/><circle cx="18" cy="17" r="2"/></symbol>
+      <symbol id="curve-key" viewBox="0 0 24 24"><path d="M2 18C12 19 9 5 21 5"/><circle cx="3" cy="18" r="1.5"/><circle cx="21" cy="5" r="1.5"/></symbol>
+    </defs>
+  </svg>
+  <header class="appbar">
+    <div class="bar-inner"><div class="brand"><img src="./mark.svg" width="31" height="31" alt=""><strong>Elegant Spline</strong><span class="bar-divider"></span><span class="product">Fit viewer</span></div>
+      <div class="file-actions"><button id="load-example" class="quiet" hidden>Load example</button><button id="open-file" class="primary"><svg class="icon"><use href="#folder"/></svg>Open fit</button><input id="file-input" type="file" accept=".json,application/json" hidden></div>
+    </div>
+  </header>
+  <main>
+    <section class="doc-heading" aria-label="Current fit">
+      <div><div class="doc-line"><h1 id="document-title">Spline fit</h1><span id="fit-status" class="status"></span></div><div class="doc-meta"><svg class="icon"><use href="#file"/></svg><span id="document-file"></span><i></i><span id="fit-method"></span></div></div>
+      <label class="stage">Curve stage<select id="stage"></select></label>
+    </section>
+    <p id="error" role="alert" hidden></p>
+    <p id="reason" hidden></p>
+    <div class="workspace">
+      <section class="panel plot-panel" aria-labelledby="plot-title">
+        <div class="panel-heading plot-heading"><h2 id="plot-title"><svg class="icon"><use href="#axes"/></svg>XY viewport</h2>
+          <div class="plot-tools"><button id="zoom-out" aria-label="Zoom out">−</button><output id="zoom-level" aria-label="Zoom level">100%</output><button id="zoom-in" aria-label="Zoom in">+</button><span></span><button id="frame" title="Frame all geometry"><svg class="icon"><use href="#frame-icon"/></svg>Frame</button></div>
+        </div>
+        <div class="plot-area"><svg id="plot" role="img" aria-label="Planar fit in XY coordinates"></svg></div>
+        <dl class="metrics">
+          <div><dt>Observations</dt><dd id="observations-count">—</dd></div>
+          <div><dt>Guide clusters</dt><dd id="cluster-count">—</dd></div>
+          <div><dt>Solver points</dt><dd id="sample-count">—</dd></div>
+          <div><dt>Cubic spans</dt><dd id="span-count">—</dd></div>
+        </dl>
+      </section>
+      <aside>
+        <section class="panel layers-panel" aria-labelledby="layer-title">
+          <div class="panel-heading"><h2 id="layer-title"><svg class="icon"><use href="#layers"/></svg>Layers</h2></div>
+          <div id="layer-list"></div>
+        </section>
+        <section class="panel inspector" aria-labelledby="inspector-title">
+          <div class="panel-heading"><h2 id="inspector-title"><svg class="icon"><use href="#point"/></svg>Point inspector</h2></div>
+          <div class="inspect-body">
+            <div class="pick-controls"><select id="pick-kind" aria-label="Point type"></select><div class="index-input"><input type="number" id="pick-index" aria-label="Point index" min="0" step="1"><span id="index-limit"></span></div></div>
+            <div class="coordinates"><div><span>X</span><output id="coord-x">—</output></div><div><span>Y</span><output id="coord-y">—</output></div></div>
+            <div id="pick-detail" aria-live="polite"></div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</body>
+</html>
