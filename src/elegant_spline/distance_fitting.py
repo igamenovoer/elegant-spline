@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from math import isfinite
+from collections.abc import Callable
+from dataclasses import MISSING, dataclass, fields
+from math import ceil, isfinite
 from numbers import Integral, Real
 from typing import Literal
 import warnings
@@ -11,7 +12,7 @@ import warnings
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 import scipy
-from scipy.interpolate import BSpline, make_splprep
+from scipy.interpolate import BSpline, make_lsq_spline, make_smoothing_spline, make_splprep
 
 from .curvature_smoothing import (
     BSplineCurvatureSmoother,
@@ -25,7 +26,11 @@ __all__ = [
     "FitMetrics",
     "FitReport",
     "FitResult",
+    "FixedKnotFitDetails",
+    "FixedKnotSplineFitter",
     "GuideReport",
+    "PlanarFitOptions",
+    "SmoothingSplineFitter",
 ]
 
 FloatArray = NDArray[np.float64]
@@ -34,6 +39,25 @@ FitStatus = Literal["fitted", "fallback", "unavailable"]
 StageStatus = Literal["completed", "failed", "skipped", "disabled", "unchanged"]
 Fallback = Literal["none", "endpoint"]
 Recovery = Literal["line", "constant"]
+FitMethod = Literal["distance", "smoothing", "fixed-knot"]
+_DEFAULT_MAXIMUM_FIT_POINTS = 4096
+
+
+@dataclass(frozen=True, slots=True)
+class PlanarFitOptions:
+    """Shared guide preparation and stage controls for a planar cubic fit."""
+
+    resample_spacing: float
+    merge_diameter: float = 0.0
+    endpoint_weight_multiplier: float = 1.0
+    maximum_fit_points: int = _DEFAULT_MAXIMUM_FIT_POINTS
+    maximum_fit_attempts: int = 1
+    correct_endpoints: bool = True
+    fairing: BSplineCurvatureSmoothingParams | None = None
+    fallback: Fallback = "none"
+
+    def __post_init__(self) -> None:
+        _validate_planar_options(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,49 +68,54 @@ class DistanceFitOptions:
     resample_spacing: float
     merge_diameter: float = 0.0
     endpoint_weight_multiplier: float = 1.0
-    maximum_fit_points: int = 4096
+    maximum_fit_points: int = _DEFAULT_MAXIMUM_FIT_POINTS
     maximum_fit_attempts: int = 1
     correct_endpoints: bool = True
     fairing: BSplineCurvatureSmoothingParams | None = None
     fallback: Fallback = "none"
 
     def __post_init__(self) -> None:
-        for name in (
-            "rms_allowance",
-            "resample_spacing",
-            "merge_diameter",
-            "endpoint_weight_multiplier",
-        ):
-            value = getattr(self, name)
-            if isinstance(value, bool) or not isinstance(value, Real):
-                raise TypeError(f"{name} must be a finite real number")
-            try:
-                number = float(value)
-            except OverflowError as error:
-                raise ValueError(f"{name} must be a finite real number") from error
-            if not isfinite(number) or number < 0 or (number == 0 and name != "merge_diameter"):
-                bounds = "nonnegative" if name == "merge_diameter" else "positive"
-                raise ValueError(f"{name} must be finite and {bounds}")
-            object.__setattr__(self, name, number)
+        allowance = _finite_setting("rms_allowance", self.rms_allowance)
+        object.__setattr__(self, "rms_allowance", allowance)
+        _validate_planar_options(self)
 
-        for name in ("maximum_fit_points", "maximum_fit_attempts"):
-            count = getattr(self, name)
-            if isinstance(count, bool) or not isinstance(count, Integral):
-                raise TypeError(f"{name} must be an integer")
-            object.__setattr__(self, name, int(count))
-        if self.maximum_fit_points < 4:
-            raise ValueError("maximum_fit_points must be at least four")
-        if self.maximum_fit_attempts not in (0, 1):
-            raise ValueError("maximum_fit_attempts must be zero or one")
-        if not isinstance(self.correct_endpoints, bool):
-            raise TypeError("correct_endpoints must be a bool")
-        if self.fallback not in ("none", "endpoint"):
-            raise ValueError("fallback must be 'none' or 'endpoint'")
-        if self.fairing is not None:
-            if not isinstance(self.fairing, BSplineCurvatureSmoothingParams):
-                raise TypeError("fairing must be BSplineCurvatureSmoothingParams or None")
-            if self.fairing.endpoint_policy != "position_and_tangent":
-                raise ValueError("integrated fairing requires position_and_tangent preservation")
+
+def _finite_setting(name: str, value: float, *, allow_zero: bool = False) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise TypeError(f"{name} must be a finite real number")
+    try:
+        number = float(value)
+    except OverflowError as error:
+        raise ValueError(f"{name} must be a finite real number") from error
+    if not isfinite(number) or number < 0 or (number == 0 and not allow_zero):
+        bounds = "nonnegative" if allow_zero else "positive"
+        raise ValueError(f"{name} must be finite and {bounds}")
+    return number
+
+
+def _validate_planar_options(options: PlanarFitOptions | DistanceFitOptions) -> None:
+    for name in ("resample_spacing", "merge_diameter", "endpoint_weight_multiplier"):
+        number = _finite_setting(name, getattr(options, name), allow_zero=name == "merge_diameter")
+        object.__setattr__(options, name, number)
+
+    for name in ("maximum_fit_points", "maximum_fit_attempts"):
+        count = getattr(options, name)
+        if isinstance(count, bool) or not isinstance(count, Integral):
+            raise TypeError(f"{name} must be an integer")
+        object.__setattr__(options, name, int(count))
+    if options.maximum_fit_points < 4:
+        raise ValueError("maximum_fit_points must be at least four")
+    if options.maximum_fit_attempts not in (0, 1):
+        raise ValueError("maximum_fit_attempts must be zero or one")
+    if not isinstance(options.correct_endpoints, bool):
+        raise TypeError("correct_endpoints must be a bool")
+    if options.fallback not in ("none", "endpoint"):
+        raise ValueError("fallback must be 'none' or 'endpoint'")
+    if options.fairing is not None:
+        if not isinstance(options.fairing, BSplineCurvatureSmoothingParams):
+            raise TypeError("fairing must be BSplineCurvatureSmoothingParams or None")
+        if options.fairing.endpoint_policy != "position_and_tangent":
+            raise ValueError("integrated fairing requires position_and_tangent preservation")
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +151,16 @@ class FitMetrics:
 
 
 @dataclass(frozen=True, slots=True)
+class FixedKnotFitDetails:
+    """Nominal spacing and the corresponding initial solver basis."""
+
+    requested_spacing: float
+    requested_span_count: int | None = None
+    selected_span_count: int | None = None
+    effective_spacing: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class FitReport:
     """Auditable evidence for the fitting stages and resulting geometry."""
 
@@ -143,6 +182,17 @@ class FitReport:
     initial_metrics: FitMetrics | None
     corrected_metrics: FitMetrics | None
     final_metrics: FitMetrics | None
+    method: FitMethod = "distance"
+    smoothing_strength: float | None = None
+    fixed_knot: FixedKnotFitDetails | None = None
+
+    def __setstate__(self, state: list[object]) -> None:
+        """Restore defaults for fields added after a report was pickled."""
+        for index, field in enumerate(fields(self)):
+            value = state[index] if index < len(state) else field.default
+            if value is MISSING:
+                raise ValueError(f"missing serialized fit report field {field.name!r}")
+            object.__setattr__(self, field.name, value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,6 +205,17 @@ class FitResult:
     initial_curve: BSpline | None
     pre_fairing_curve: BSpline | None
     report: FitReport
+
+
+@dataclass(frozen=True, slots=True)
+class _InitialFit:
+    solve: Callable[[], BSpline]
+    method: FitMethod = "distance"
+    minimum_fit_points: int = 4
+    residual_budget: float | None = None
+    skip_reason: str | None = None
+    smoothing_strength: float | None = None
+    fixed_knot: FixedKnotFitDetails | None = None
 
 
 def _input_points(points: ArrayLike) -> FloatArray:
@@ -267,7 +328,7 @@ def _fit_weights(parameters: FloatArray, endpoint_multiplier: float) -> tuple[Fl
     return scaled * np.sqrt(len(scaled) / np.sum(scaled**2)), "log_normalization"
 
 
-def _prepare_guide(source: FloatArray, options: DistanceFitOptions) -> GuideReport:
+def _prepare_guide(source: FloatArray, options: PlanarFitOptions | DistanceFitOptions) -> GuideReport:
     guide, unique_count, membership, diameters, detail_loss = _cluster_guide(
         source, options.merge_diameter
     )
@@ -355,8 +416,40 @@ def _fit_cubic(guide: GuideReport, budget: float) -> BSpline:
     expected = np.moveaxis(curve(probes), curve.axis, 0)
     if not np.allclose(cubic(probes), expected, rtol=1e-12, atol=1e-12):
         raise ValueError("normalizing the coordinate axis changed the fitted curve")
-    _validate_curve(cubic)
     return cubic
+
+
+def _fit_smoothing_spline(guide: GuideReport, smoothing_strength: float) -> BSpline:
+    with np.errstate(under="ignore"):
+        squared_weights = np.square(guide.weights)
+    if np.any(squared_weights <= 0.0):
+        raise ValueError("squared guide weights must remain positive")
+
+    parameters = np.asarray(guide.parameters)
+    points = np.asarray(guide.points)
+    # SciPy 1.15 accepts scalar ordinates only. An explicit strength gives both axes one basis.
+    with np.errstate(divide="raise", over="raise", invalid="raise"):
+        x_curve, y_curve = (
+            make_smoothing_spline(parameters, ordinates, w=squared_weights, lam=smoothing_strength)
+            for ordinates in points.T
+        )
+    if not np.array_equal(x_curve.t, y_curve.t):
+        raise ValueError("the coordinate smoothing splines have different knots")
+    controls = np.column_stack((x_curve.c, y_curve.c))
+    cubic = BSpline(x_curve.t, controls, 3, extrapolate=False)
+    if smoothing_strength == 0.0 and not np.allclose(
+        cubic(parameters), points, rtol=1e-9, atol=1e-12
+    ):
+        raise ValueError("the zero-strength spline failed guide interpolation verification")
+    return cubic
+
+
+def _fit_fixed_knot_spline(guide: GuideReport, span_count: int) -> BSpline:
+    knots = np.r_[np.zeros(4), np.arange(1, span_count) / span_count, np.ones(4)]
+    curve = make_lsq_spline(
+        guide.parameters, guide.points, knots, k=3, w=guide.weights, method="qr"
+    )
+    return BSpline(curve.t, curve.c, curve.k, extrapolate=False)
 
 
 def _correct_endpoints(curve: BSpline, endpoints: FloatArray) -> BSpline:
@@ -444,6 +537,43 @@ def _failure(error: Exception) -> str:
     return f"{type(error).__name__}: {error}"
 
 
+def _prepare_distance_fit(guide: GuideReport, rms_allowance: float) -> _InitialFit:
+    requested_budget = len(guide.points) * rms_allowance * rms_allowance
+    finite_budget = isfinite(requested_budget)
+    return _InitialFit(
+        solve=lambda: _fit_cubic(guide, requested_budget),
+        residual_budget=requested_budget if finite_budget else None,
+        skip_reason=None if finite_budget else "residual_budget_outside_finite_arithmetic",
+    )
+
+
+def _prepare_smoothing_fit(guide: GuideReport, smoothing_strength: float) -> _InitialFit:
+    return _InitialFit(
+        solve=lambda: _fit_smoothing_spline(guide, smoothing_strength),
+        method="smoothing",
+        minimum_fit_points=5,
+        smoothing_strength=smoothing_strength,
+    )
+
+
+def _prepare_fixed_knot_fit(guide: GuideReport, knot_spacing: float) -> _InitialFit:
+    span_cap = len(guide.points) - 3
+    span_ratio = guide.length / knot_spacing
+    requested_spans = max(1, ceil(span_ratio)) if isfinite(span_ratio) else None
+    selected_spans = min(requested_spans or span_cap, span_cap)
+    details = FixedKnotFitDetails(
+        requested_spacing=knot_spacing,
+        requested_span_count=requested_spans,
+        selected_span_count=selected_spans if selected_spans > 0 else None,
+        effective_spacing=guide.length / selected_spans if selected_spans > 0 else None,
+    )
+    return _InitialFit(
+        solve=lambda: _fit_fixed_knot_spline(guide, selected_spans),
+        method="fixed-knot",
+        fixed_knot=details,
+    )
+
+
 class DistanceSplineFitter:
     """Reusable planar fitter with isolated state for each call."""
 
@@ -458,129 +588,195 @@ class DistanceSplineFitter:
 
     def fit(self, points_xy: ArrayLike) -> FitResult:
         """Fit ordered observations and report the curve retained at each stage."""
-        options = self._options
-        source = _input_points(points_xy)
-        distances = _cumulative_chords(source)
-        source_parameters = distances / distances[-1] if distances[-1] else distances
-        guide = _prepare_guide(source, options)
-        requested_budget = len(guide.points) * options.rms_allowance * options.rms_allowance
-        budget = requested_budget if isfinite(requested_budget) else None
+        return _fit_planar(
+            points_xy,
+            self._options,
+            lambda guide: _prepare_distance_fit(guide, self._options.rms_allowance),
+        )
 
-        initial = None
-        solver_attempts = 0
-        solver_status: StageStatus = "skipped"
-        solver_reason = None
-        solver_warnings = ()
-        if budget is None:
-            solver_reason = "residual_budget_outside_finite_arithmetic"
-        elif guide.unique_count < 4 or len(guide.parameters) < 4:
-            solver_reason = "insufficient_observations"
-        elif any(b <= a for a, b in zip(guide.parameters, guide.parameters[1:])):
-            solver_reason = "fit_parameters_are_not_strictly_increasing"
-        elif options.maximum_fit_attempts == 0:
-            solver_reason = "attempt_budget_exhausted"
-        else:
-            solver_attempts = 1
-            with warnings.catch_warnings(record=True) as recorded:
-                warnings.simplefilter("always")
-                try:
-                    initial = _fit_cubic(guide, budget)
-                    solver_status = "completed"
-                except Exception as error:
-                    solver_status = "failed"
-                    solver_reason = _failure(error)
-            solver_warnings = tuple(
-                f"{item.category.__name__}: {item.message}" for item in recorded
+
+class SmoothingSplineFitter:
+    """Fit a planar cubic with a penalty on coordinate second derivatives."""
+
+    def __init__(self, *, smoothing_strength: float, options: PlanarFitOptions) -> None:
+        if not isinstance(options, PlanarFitOptions):
+            raise TypeError("options must be PlanarFitOptions")
+        self._options = options
+        self._smoothing_strength = _finite_setting(
+            "smoothing_strength", smoothing_strength, allow_zero=True
+        )
+
+    @property
+    def options(self) -> PlanarFitOptions:
+        return self._options
+
+    def fit(self, points_xy: ArrayLike) -> FitResult:
+        """Fit ordered observations and report the curve retained at each stage."""
+        return _fit_planar(
+            points_xy,
+            self._options,
+            lambda guide: _prepare_smoothing_fit(guide, self._smoothing_strength),
+        )
+
+
+class FixedKnotSplineFitter:
+    """Fit a planar cubic on a knot basis sized by nominal guide spacing."""
+
+    def __init__(self, *, knot_spacing: float, options: PlanarFitOptions) -> None:
+        if not isinstance(options, PlanarFitOptions):
+            raise TypeError("options must be PlanarFitOptions")
+        self._options = options
+        self._knot_spacing = _finite_setting("knot_spacing", knot_spacing)
+
+    @property
+    def options(self) -> PlanarFitOptions:
+        return self._options
+
+    def fit(self, points_xy: ArrayLike) -> FitResult:
+        """Fit ordered observations and report the curve retained at each stage."""
+        return _fit_planar(
+            points_xy,
+            self._options,
+            lambda guide: _prepare_fixed_knot_fit(guide, self._knot_spacing),
+        )
+
+
+def _fit_planar(
+    points_xy: ArrayLike,
+    options: PlanarFitOptions | DistanceFitOptions,
+    prepare_initial_fit: Callable[[GuideReport], _InitialFit],
+) -> FitResult:
+    source = _input_points(points_xy)
+    distances = _cumulative_chords(source)
+    source_parameters = distances / distances[-1] if distances[-1] else distances
+    guide = _prepare_guide(source, options)
+    fit = prepare_initial_fit(guide)
+    budget = fit.residual_budget
+
+    initial = None
+    solver_attempts = 0
+    solver_status: StageStatus = "skipped"
+    solver_reason = None
+    solver_warnings = ()
+    if fit.skip_reason is not None:
+        solver_reason = fit.skip_reason
+    elif guide.unique_count < 4 or len(guide.parameters) < fit.minimum_fit_points:
+        solver_reason = "insufficient_observations"
+    elif any(b <= a for a, b in zip(guide.parameters, guide.parameters[1:])):
+        solver_reason = "fit_parameters_are_not_strictly_increasing"
+    elif options.maximum_fit_attempts == 0:
+        solver_reason = "attempt_budget_exhausted"
+    else:
+        solver_attempts = 1
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            try:
+                candidate = fit.solve()
+                _validate_curve(candidate)
+                initial = candidate
+                solver_status = "completed"
+            except Exception as error:
+                solver_status = "failed"
+                solver_reason = _failure(error)
+        solver_warnings = tuple(
+            f"{item.category.__name__}: {item.message}" for item in recorded
+        )
+
+    endpoints = source[[0, -1]]
+    selected = initial
+    corrected = None
+    correction_status: StageStatus = "skipped" if options.correct_endpoints else "disabled"
+    correction_reason = None
+    if selected is not None and options.correct_endpoints:
+        try:
+            corrected = _correct_endpoints(selected, endpoints)
+            selected = corrected
+            correction_status = "completed"
+        except Exception as error:
+            correction_status = "failed"
+            correction_reason = _failure(error)
+
+    pre_fairing = None
+    fairing_status: StageStatus = "skipped" if options.fairing else "disabled"
+    fairing_reason = None
+    fairing_report = None
+    if selected is not None and options.fairing is not None:
+        pre_fairing = selected
+        try:
+            result = BSplineCurvatureSmoother(options.fairing).smooth_with_report(
+                selected, points=guide.points, parameters=guide.parameters
             )
-
-        endpoints = source[[0, -1]]
-        selected = initial
-        corrected = None
-        correction_status: StageStatus = "skipped" if options.correct_endpoints else "disabled"
-        correction_reason = None
-        if selected is not None and options.correct_endpoints:
-            try:
-                corrected = _correct_endpoints(selected, endpoints)
-                selected = corrected
-                correction_status = "completed"
-            except Exception as error:
-                correction_status = "failed"
-                correction_reason = _failure(error)
-
-        pre_fairing = None
-        fairing_status: StageStatus = "skipped" if options.fairing else "disabled"
-        fairing_reason = None
-        fairing_report = None
-        if selected is not None and options.fairing is not None:
-            pre_fairing = selected
-            try:
-                result = BSplineCurvatureSmoother(options.fairing).smooth_with_report(
-                    selected, points=guide.points, parameters=guide.parameters
-                )
-                fairing_report = result.report
-                if fairing_report.outcome == "completed":
-                    _verify_faired(result.spline, selected)
-                    selected = result.spline
-                    fairing_status = "completed"
-                elif fairing_report.outcome == "unchanged":
-                    fairing_status = "unchanged"
-                else:
-                    fairing_status = "failed"
-                fairing_reason = fairing_report.reason
-            except Exception as error:
+            fairing_report = result.report
+            if fairing_report.outcome == "completed":
+                _verify_faired(result.spline, selected)
+                selected = result.spline
+                fairing_status = "completed"
+            elif fairing_report.outcome == "unchanged":
+                fairing_status = "unchanged"
+            else:
                 fairing_status = "failed"
-                fairing_reason = _failure(error)
+            fairing_reason = fairing_report.reason
+        except Exception as error:
+            fairing_status = "failed"
+            fairing_reason = _failure(error)
 
-        status: FitStatus = "fitted" if selected is not None else "unavailable"
-        recovery: Recovery | None = None
-        recovery_reason = None
-        if selected is None and options.fallback == "endpoint":
-            try:
-                selected = _recover(endpoints)
-                recovery = "constant" if np.array_equal(endpoints[0], endpoints[1]) else "line"
-                status = "fallback"
-            except Exception as error:
-                recovery_reason = _failure(error)
+    status: FitStatus = "fitted" if selected is not None else "unavailable"
+    recovery: Recovery | None = None
+    recovery_reason = None
+    if selected is None and options.fallback == "endpoint":
+        try:
+            selected = _recover(endpoints)
+            recovery = "constant" if np.array_equal(endpoints[0], endpoints[1]) else "line"
+            status = "fallback"
+        except Exception as error:
+            recovery_reason = _failure(error)
 
-        initial_metrics = (
-            _measure(initial, source, source_parameters, guide, budget)
-            if initial is not None else None
-        )
-        corrected_metrics = (
-            _measure(corrected, source, source_parameters, guide, budget)
-            if corrected is not None else None
-        )
-        if selected is initial:
-            final_metrics = initial_metrics
-        elif selected is corrected:
-            final_metrics = corrected_metrics
-        else:
-            final_metrics = _measure(selected, source, source_parameters, guide, budget)
+    initial_metrics = (
+        _measure(initial, source, source_parameters, guide, budget)
+        if initial is not None else None
+    )
+    corrected_metrics = (
+        _measure(corrected, source, source_parameters, guide, budget)
+        if corrected is not None else None
+    )
+    if selected is initial:
+        final_metrics = initial_metrics
+    elif selected is corrected:
+        final_metrics = corrected_metrics
+    else:
+        final_metrics = _measure(selected, source, source_parameters, guide, budget)
 
-        return FitResult(
-            status=status,
-            curve=selected,
-            source_parameters=tuple(map(float, source_parameters)),
-            initial_curve=initial,
-            pre_fairing_curve=pre_fairing,
-            report=FitReport(
-                guide=guide,
-                numpy_version=np.__version__,
-                scipy_version=scipy.__version__,
-                residual_budget=budget,
-                solver_attempts=solver_attempts,
-                solver_status=solver_status,
-                solver_reason=solver_reason,
-                solver_warnings=solver_warnings,
-                correction_status=correction_status,
-                correction_reason=correction_reason,
-                fairing_status=fairing_status,
-                fairing_reason=fairing_reason,
-                fairing_report=fairing_report,
-                recovery=recovery,
-                recovery_reason=recovery_reason,
-                initial_metrics=initial_metrics,
-                corrected_metrics=corrected_metrics,
-                final_metrics=final_metrics,
-            ),
-        )
+    fixed_knot = fit.fixed_knot
+    if fixed_knot is not None and solver_attempts == 0:
+        fixed_knot = FixedKnotFitDetails(requested_spacing=fixed_knot.requested_spacing)
+
+    return FitResult(
+        status=status,
+        curve=selected,
+        source_parameters=tuple(map(float, source_parameters)),
+        initial_curve=initial,
+        pre_fairing_curve=pre_fairing,
+        report=FitReport(
+            guide=guide,
+            numpy_version=np.__version__,
+            scipy_version=scipy.__version__,
+            residual_budget=budget,
+            solver_attempts=solver_attempts,
+            solver_status=solver_status,
+            solver_reason=solver_reason,
+            solver_warnings=solver_warnings,
+            correction_status=correction_status,
+            correction_reason=correction_reason,
+            fairing_status=fairing_status,
+            fairing_reason=fairing_reason,
+            fairing_report=fairing_report,
+            recovery=recovery,
+            recovery_reason=recovery_reason,
+            initial_metrics=initial_metrics,
+            corrected_metrics=corrected_metrics,
+            final_metrics=final_metrics,
+            method=fit.method,
+            smoothing_strength=fit.smoothing_strength,
+            fixed_knot=fixed_knot,
+        ),
+    )

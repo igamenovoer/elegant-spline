@@ -1,13 +1,14 @@
 """Unit checks for planar fitting using synthetic coordinates."""
 
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import FrozenInstanceError, fields, replace
+import pickle
 import unittest
 from unittest.mock import patch
 
 import numpy as np
 from scipy.interpolate import BSpline, make_splprep
 
-from elegant_spline.distance_fitting import DistanceFitOptions, DistanceSplineFitter
+from elegant_spline.distance_fitting import DistanceFitOptions, DistanceSplineFitter, FitReport
 
 
 POINTS = np.array(
@@ -81,6 +82,18 @@ class GuidePreparationTests(unittest.TestCase):
 
 
 class DistanceFittingTests(unittest.TestCase):
+    def test_pickled_distance_reports_preserve_values_and_restore_legacy_defaults(self):
+        report = DistanceSplineFitter(OPTIONS).fit(POINTS).report
+        self.assertEqual(pickle.loads(pickle.dumps(report)), report)
+
+        added_fields = {"method", "smoothing_strength", "fixed_knot"}
+        legacy_state = [
+            getattr(report, field.name) for field in fields(report) if field.name not in added_fields
+        ]
+        restored = object.__new__(FitReport)
+        restored.__setstate__(legacy_state)
+        self.assertEqual(restored, report)
+
     def test_weighted_fit_matches_independent_scipy_reference(self):
         option = replace(OPTIONS, endpoint_weight_multiplier=2.0)
         result = DistanceSplineFitter(option).fit(POINTS)

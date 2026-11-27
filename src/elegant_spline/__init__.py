@@ -13,7 +13,11 @@ from .distance_fitting import (
     FitMetrics,
     FitReport,
     FitResult,
+    FixedKnotFitDetails,
+    FixedKnotSplineFitter,
     GuideReport,
+    PlanarFitOptions,
+    SmoothingSplineFitter,
 )
 
 __all__ = [
@@ -26,6 +30,10 @@ __all__ = [
     "FitMetrics",
     "FitReport",
     "FitResult",
+    "FixedKnotFitDetails",
+    "FixedKnotSplineFitter",
     "GuideReport",
+    "PlanarFitOptions",
     "SmoothingReport",
+    "SmoothingSplineFitter",
 ]

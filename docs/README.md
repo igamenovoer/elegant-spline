@@ -18,10 +18,12 @@ Run the package checks in the locked environment.
 pixi run --locked test
 ```
 
-The suite checks package installation, distance fitting, fixed-knot fairing, and their combined use. [Test layout](../tests/README.md)
+The suite checks package installation, the three planar fitters, geometric curvature fairing, and their combined use. [Test layout](../tests/README.md)
 
 ## Use the library
 
-- Fit a planar cubic to ordered points. [Distance fitting](distance-fitting.md)
+- Fit a planar cubic with a weighted RMS allowance. [Distance fitting](distance-fitting.md)
+- Fit a planar cubic with a coordinate derivative penalty. [Smoothing strength](planar-fitting.md#smoothing-strength)
+- Fit a planar cubic with a spacing-derived knot basis. [Fixed-knot spacing](planar-fitting.md#fixed-knot-spacing)
 - Fair an existing vector spline. [Curvature smoothing](curvature-smoothing.md)
 - Fit and fair the same curve in one call. [Combined example](fit-and-fair.md)

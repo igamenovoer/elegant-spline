@@ -13,6 +13,8 @@ Elegant Spline is a project for constructing and fitting spline curves that sati
 
 Fit ordered planar observations with a weighted RMS allowance and optional endpoint correction. [Planar distance fitting](docs/distance-fitting.md)
 
+Fit with a coordinate smoothing penalty or a spacing-derived knot basis using shared guide options. [Smoothing and fixed-knot fitting](docs/planar-fitting.md)
+
 Fair an existing SciPy B-spline while preserving its basis and the boundary values selected by the caller. [Curvature smoothing](docs/curvature-smoothing.md) · [Combined example](docs/fit-and-fair.md)
 
 ## Spatial-containment goal
